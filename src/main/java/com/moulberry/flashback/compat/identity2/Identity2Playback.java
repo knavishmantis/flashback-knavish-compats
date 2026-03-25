@@ -1,71 +1,117 @@
 package com.moulberry.flashback.compat.identity2;
 
 import net.Gabou.identity2.util.EntityAccessor;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.UUID;
 
 /**
  * Handles restoring Identity2 morph state during replay playback.
  *
- * When Flashback replays a recording, FakePlayer entities are created for each
- * recorded player. This class applies the recorded morph state to those FakePlayer
- * entities using Identity2's EntityAccessor interface (injected via EntityMixin).
- *
- * Identity2's client-side PlayerEntityRendererMixin will then automatically
- * render the morphed entity model instead of the player model, as long as
- * Identity2 is installed on the client viewing the replay.
+ * Identity2's PlayerEntityRendererMixin checks getCurrentIdentity() on the
+ * CLIENT-SIDE player entity (RemotePlayer), not the server-side FakePlayer.
+ * So we must apply the morph on the client-side entity for it to render.
  */
 public class Identity2Playback {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("flashback-identity2");
+
     /**
-     * Apply a morph state to a player entity during replay.
-     *
-     * @param player      The FakePlayer (or any ServerPlayer) in the replay world
-     * @param entityTypeId The entity type identifier (e.g. "minecraft:creeper"), or "" to clear
-     * @param variantNbt   The variant NBT data as a string, or "" for default variant
+     * Apply morph on BOTH server and client side entities.
+     * Server side: FakePlayer (for any server-side checks)
+     * Client side: RemotePlayer (for rendering via Identity2's mixin)
      */
-    public static void applyMorph(ServerPlayer player, String entityTypeId, String variantNbt) {
-        EntityAccessor accessor = (EntityAccessor) player;
+    public static void applyMorph(ServerPlayer serverPlayer, String entityTypeId, String variantNbt) {
+        LOGGER.info("[APPLY] Applying morph {} to player {} (server-side class={})",
+            entityTypeId, serverPlayer.getUUID(), serverPlayer.getClass().getSimpleName());
+
+        // Apply on server-side player
+        applyToEntity(serverPlayer, entityTypeId);
+
+        // Apply on client-side player entity
+        UUID uuid = serverPlayer.getUUID();
+        Minecraft.getInstance().execute(() -> {
+            ClientLevel clientLevel = Minecraft.getInstance().level;
+            if (clientLevel == null) return;
+
+            for (Player clientPlayer : clientLevel.players()) {
+                if (clientPlayer.getUUID().equals(uuid)) {
+                    LOGGER.info("[APPLY-CLIENT] Found client player {}, applying morph {}",
+                        uuid, entityTypeId);
+                    applyToEntity(clientPlayer, entityTypeId);
+                    Entity result = ((EntityAccessor) clientPlayer).getCurrentIdentity();
+                    LOGGER.info("[APPLY-CLIENT] Result identity: {}",
+                        result != null ? EntityType.getKey(result.getType()) : "NULL");
+                    return;
+                }
+            }
+            LOGGER.info("[APPLY-CLIENT] Client player {} not found yet, will retry via tick flush", uuid);
+        });
+    }
+
+    private static void applyToEntity(Entity entity, String entityTypeId) {
+        EntityAccessor accessor = (EntityAccessor) entity;
 
         if (entityTypeId == null || entityTypeId.isEmpty()) {
-            // Clear the morph - player returns to normal form
             accessor.setCurrentIdentity((Entity) null);
             return;
         }
 
         try {
-            // Use Identity2's setCurrentIdentity(String id) which handles
-            // entity creation, dimension sync, trait application, etc.
             accessor.setCurrentIdentity(entityTypeId);
         } catch (Exception e) {
-            // Fallback: create the entity directly and set it
+            LOGGER.error("[APPLY] setCurrentIdentity('{}') failed on {}", entityTypeId, entity.getClass().getSimpleName(), e);
             try {
-                applyMorphDirect(player, entityTypeId);
+                applyDirectToEntity(entity, entityTypeId);
             } catch (Exception ex) {
-                // Silently fail - the player will just appear unmorphed
+                LOGGER.error("[APPLY] Direct fallback also failed", ex);
             }
         }
     }
 
-    /**
-     * Direct fallback: creates the identity entity manually and sets it on the player.
-     * Used if Identity2's higher-level API isn't available or fails.
-     */
-    private static void applyMorphDirect(ServerPlayer player, String entityTypeId) {
+    private static void applyDirectToEntity(Entity target, String entityTypeId) {
         Identifier typeId = Identifier.parse(entityTypeId);
         EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.getValue(typeId);
         if (entityType == null) return;
 
-        Entity entity = entityType.create(player.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
-        if (entity == null) return;
+        Entity identity = entityType.create(target.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+        if (identity == null) return;
 
-        // Position the identity entity at the player's location
-        entity.setPos(player.position());
+        identity.setPos(target.position());
+        ((EntityAccessor) target).setCurrentIdentity(identity);
+    }
 
-        EntityAccessor accessor = (EntityAccessor) player;
-        accessor.setCurrentIdentity(entity);
+    /**
+     * Called from client tick to apply any pending morphs to client-side player entities.
+     * This catches cases where the client entity didn't exist when applyMorph was first called.
+     */
+    public static void applyPendingToClientPlayers(java.util.Map<UUID, ActionIdentity2Morph.MorphData> pendingClientMorphs) {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level == null || pendingClientMorphs.isEmpty()) return;
+
+        var iterator = pendingClientMorphs.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            UUID uuid = entry.getKey();
+            String entityTypeId = entry.getValue().entityTypeId();
+
+            for (Player player : level.players()) {
+                if (player.getUUID().equals(uuid)) {
+                    LOGGER.info("[CLIENT-FLUSH] Applying deferred client morph {} to {}", entityTypeId, uuid);
+                    applyToEntity(player, entityTypeId);
+                    iterator.remove();
+                    break;
+                }
+            }
+        }
     }
 }
