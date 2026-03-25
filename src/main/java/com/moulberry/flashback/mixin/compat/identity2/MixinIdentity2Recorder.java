@@ -27,20 +27,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinIdentity2Recorder {
 
     /**
-     * Hook into Recorder.flushPackets() which is called each tick during recording.
+     * Hook into Recorder.endTick() which is called each tick during recording.
      * We piggyback on this to poll morph state changes.
+     * When close=true, recording is ending so we clear tracking state.
      */
-    @Inject(method = "flushPackets", at = @At("RETURN"))
-    private void flashback$tickIdentity2MorphTracking(CallbackInfo ci) {
-        Identity2Recorder.tickMorphTracking();
-    }
-
-    /**
-     * Clear morph tracking state when recording ends.
-     * Hooks into the recorder's close/cleanup path.
-     */
-    @Inject(method = "endRecording", at = @At("HEAD"))
-    private void flashback$clearIdentity2Tracking(CallbackInfo ci) {
-        Identity2Recorder.clearTracking();
+    @Inject(method = "endTick", at = @At("RETURN"))
+    private void flashback$tickIdentity2MorphTracking(boolean close, CallbackInfo ci) {
+        if (close) {
+            Identity2Recorder.clearTracking();
+        } else {
+            Identity2Recorder.tickMorphTracking();
+        }
     }
 }

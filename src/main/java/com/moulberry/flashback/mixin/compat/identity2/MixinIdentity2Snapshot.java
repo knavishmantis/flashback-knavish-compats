@@ -3,10 +3,14 @@ package com.moulberry.flashback.mixin.compat.identity2;
 import com.moulberry.flashback.compat.identity2.Identity2Recorder;
 import com.moulberry.flashback.record.Recorder;
 import com.moulberry.mixinconstraints.annotations.IfModLoaded;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import java.util.function.Consumer;
 
 /**
  * Hooks into Flashback's Recorder.writeCustomSnapshot() to inject Identity2 morph
@@ -25,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinIdentity2Snapshot {
 
     @Inject(method = "writeCustomSnapshot", at = @At("RETURN"))
-    private void flashback$writeIdentity2Snapshot(CallbackInfo ci) {
+    private void flashback$writeIdentity2Snapshot(Consumer<Packet<? super ClientGamePacketListener>> consumer, CallbackInfo ci) {
         Identity2Recorder.writeSnapshotMorphStates();
     }
 }

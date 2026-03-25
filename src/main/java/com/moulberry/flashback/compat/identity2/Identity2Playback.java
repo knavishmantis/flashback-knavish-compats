@@ -1,10 +1,7 @@
 package com.moulberry.flashback.compat.identity2;
 
-import net.Gabou.identity2.identity.IdentityProgression;
 import net.Gabou.identity2.util.EntityAccessor;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -40,27 +37,13 @@ public class Identity2Playback {
         }
 
         try {
-            // Use Identity2's own morph system if available
-            // This ensures all side effects (dimensions, traits, etc.) are applied correctly
-            Identifier id = Identifier.parse(entityTypeId);
-            CompoundTag nbt = CompoundTag.EMPTY;
-            if (variantNbt != null && !variantNbt.isEmpty()) {
-                try {
-                    nbt = TagParser.parseCompoundFully(variantNbt);
-                } catch (Exception e) {
-                    // Fall back to empty NBT if parsing fails
-                    nbt = CompoundTag.EMPTY;
-                }
-            }
-
-            // Try using Identity2's setCurrentIdentity(String id, CompoundTag data)
-            // which handles entity creation, dimension sync, trait application, etc.
-            accessor.setCurrentIdentity(entityTypeId, nbt);
-
+            // Use Identity2's setCurrentIdentity(String id) which handles
+            // entity creation, dimension sync, trait application, etc.
+            accessor.setCurrentIdentity(entityTypeId);
         } catch (Exception e) {
             // Fallback: create the entity directly and set it
             try {
-                applyMorphDirect(player, entityTypeId, variantNbt);
+                applyMorphDirect(player, entityTypeId);
             } catch (Exception ex) {
                 // Silently fail - the player will just appear unmorphed
             }
@@ -71,23 +54,13 @@ public class Identity2Playback {
      * Direct fallback: creates the identity entity manually and sets it on the player.
      * Used if Identity2's higher-level API isn't available or fails.
      */
-    private static void applyMorphDirect(ServerPlayer player, String entityTypeId, String variantNbt) {
+    private static void applyMorphDirect(ServerPlayer player, String entityTypeId) {
         Identifier typeId = Identifier.parse(entityTypeId);
         EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.getValue(typeId);
         if (entityType == null) return;
 
         Entity entity = entityType.create(player.level(), net.minecraft.world.entity.EntitySpawnReason.COMMAND);
         if (entity == null) return;
-
-        // Apply variant NBT if present
-        if (variantNbt != null && !variantNbt.isEmpty()) {
-            try {
-                CompoundTag nbt = TagParser.parseCompoundFully(variantNbt);
-                entity.load(nbt);
-            } catch (Exception e) {
-                // Use default entity state
-            }
-        }
 
         // Position the identity entity at the player's location
         entity.setPos(player.position());
