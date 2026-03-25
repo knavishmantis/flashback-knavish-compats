@@ -177,7 +177,7 @@ jar {
 
 shadowJar {
     configurations = [project.configurations.shadow]
-    archiveBaseName = "flashback"
+    archiveBaseName = "flashback-knavish-compats"
     destinationDirectory = file("${buildDir}/tmp/allJar")
 
     exclude("LICENSE")
