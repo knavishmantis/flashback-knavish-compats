@@ -257,6 +257,9 @@ public class Flashback implements ModInitializer, ClientModInitializer {
         ActionRegistry.register(ActionLevelChunkCached.INSTANCE);
         ActionRegistry.register(ActionAccuratePlayerPosition.INSTANCE);
 
+        // Identity2 morph mod compatibility
+        com.moulberry.flashback.compat.identity2.Identity2Support.initialize();
+
         KeyframeRegistry.register(CameraKeyframeType.INSTANCE);
         KeyframeRegistry.register(CameraOrbitKeyframeType.INSTANCE);
         KeyframeRegistry.register(TrackEntityKeyframeType.INSTANCE);

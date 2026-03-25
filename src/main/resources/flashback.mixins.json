@@ -75,6 +75,8 @@
     "compat.fabric.MixinFabricServerPlayNetworking",
     "compat.iris.MixinIrisHandRenderer",
     "compat.iris.MixinIrisSystemTimeUniforms",
+    "compat.identity2.MixinIdentity2Recorder",
+    "compat.identity2.MixinIdentity2Snapshot",
     "compat.replaymod.MixinReplayModRecording",
     "compat.voice_chat.MixinVoiceChatALSpeakerBase",
     "compat.voice_chat.MixinVoiceChatClientPlayerStateManager",
