@@ -10,15 +10,16 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Custom Flashback action that stores and replays Identity2 morph state.
  *
- * Packet format:
- *   - UUID (player uuid)
- *   - String (entity type id, e.g. "minecraft:creeper", or "" for unmorph)
- *   - String (variant NBT as string, or "" for none)
+ * During snapshot processing, player entities may not exist yet when morph
+ * actions fire. We buffer pending morphs and apply them when the player
+ * is found or when explicitly flushed after snapshot completes.
  */
 public class ActionIdentity2Morph implements Action {
 
@@ -37,6 +38,9 @@ public class ActionIdentity2Morph implements Action {
 
     public record MorphData(String playerUuid, String entityTypeId, String variantNbt) {}
 
+    // Pending morphs that couldn't be applied because the player wasn't spawned yet
+    private static final Map<UUID, MorphData> pendingMorphs = new ConcurrentHashMap<>();
+
     private ActionIdentity2Morph() {}
 
     @Override
@@ -48,11 +52,6 @@ public class ActionIdentity2Morph implements Action {
     public void handle(ReplayServer replayServer, RegistryFriendlyByteBuf friendlyByteBuf) {
         MorphData data = STREAM_CODEC.decode(friendlyByteBuf);
 
-        if (replayServer.isProcessingSnapshot) {
-            // During snapshot processing, still apply morph state to keep entities in sync
-        }
-
-        // Find the player entity in the replay world by UUID
         UUID uuid;
         try {
             uuid = UUID.fromString(data.playerUuid());
@@ -60,12 +59,43 @@ public class ActionIdentity2Morph implements Action {
             return;
         }
 
-        // Apply the morph on the main thread
+        // Try to apply immediately
         for (ServerPlayer player : replayServer.getPlayerList().getPlayers()) {
             if (player.getUUID().equals(uuid)) {
                 Identity2Playback.applyMorph(player, data.entityTypeId(), data.variantNbt());
+                pendingMorphs.remove(uuid);
                 return;
             }
         }
+
+        // Player not found yet (common during snapshot processing) — buffer it
+        pendingMorphs.put(uuid, data);
+    }
+
+    /**
+     * Try to apply any pending morphs. Called after snapshot processing completes
+     * and periodically during replay to catch late-spawning players.
+     */
+    public static void flushPendingMorphs(ReplayServer replayServer) {
+        if (pendingMorphs.isEmpty()) return;
+
+        var iterator = pendingMorphs.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            UUID uuid = entry.getKey();
+            MorphData data = entry.getValue();
+
+            for (ServerPlayer player : replayServer.getPlayerList().getPlayers()) {
+                if (player.getUUID().equals(uuid)) {
+                    Identity2Playback.applyMorph(player, data.entityTypeId(), data.variantNbt());
+                    iterator.remove();
+                    break;
+                }
+            }
+        }
+    }
+
+    public static void clearPending() {
+        pendingMorphs.clear();
     }
 }
