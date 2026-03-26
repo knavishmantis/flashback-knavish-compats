@@ -116,7 +116,7 @@ public class TemplateManager {
                         continue;
                     }
 
-                    int track = trackObj.has("track") ? trackObj.get("track").getAsInt() : -1;
+                    int track = trackObj.has("track") ? Math.max(0, trackObj.get("track").getAsInt()) : 0;
                     boolean copiedFromDisabled = trackObj.has("copiedFromDisabled") && trackObj.get("copiedFromDisabled").getAsBoolean();
 
                     // Parse keyframes map
