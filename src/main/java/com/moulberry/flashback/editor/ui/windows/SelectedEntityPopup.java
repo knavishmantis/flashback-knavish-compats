@@ -99,20 +99,27 @@ public class SelectedEntityPopup {
             Minecraft.getInstance().levelRenderer.debugRenderer.refreshRendererList();
         }
 
-        // Template application menu
+        // Knavish Templates
         java.util.List<KeyframeTemplate> templates = TemplateManager.getTemplates();
-        if (!templates.isEmpty() && ImGui.beginMenu("Knavish Templates")) {
+        if (!templates.isEmpty()) {
+            ImGui.separator();
+            ImGui.textUnformatted("Knavish Templates");
             for (KeyframeTemplate template : templates) {
-                String label = template.name;
-                if (template.description != null && !template.description.isEmpty()) {
-                    label += "##" + template.description;
-                }
-                if (ImGui.menuItem(template.name)) {
+                if (ImGui.button(template.name + "##template_" + template.name)) {
                     ReplayServer replayServer = Flashback.getReplayServer();
-                    EditorScene scene = TimelineWindow.getEditorScene();
-                    if (replayServer != null && scene != null) {
+                    if (replayServer != null) {
                         int totalTicks = replayServer.getTotalReplayTicks();
-                        TemplateManager.applyTemplate(template, entity.getUUID(), editorState, scene, totalTicks);
+                        // Get scene reference under read lock, then release before modifying
+                        EditorScene scene;
+                        long stamp = editorState.acquireRead();
+                        try {
+                            scene = editorState.getCurrentScene(stamp);
+                        } finally {
+                            editorState.release(stamp);
+                        }
+                        if (scene != null) {
+                            TemplateManager.applyTemplate(template, entity.getUUID(), editorState, scene, totalTicks);
+                        }
                     }
                     ImGui.closeCurrentPopup();
                 }
@@ -120,7 +127,6 @@ public class SelectedEntityPopup {
                     ImGui.setTooltip(template.description);
                 }
             }
-            ImGui.endMenu();
         }
 
         if (FabricLoader.getInstance().isModLoaded("voicechat")) {
