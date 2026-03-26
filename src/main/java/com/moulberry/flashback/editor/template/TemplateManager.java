@@ -163,7 +163,9 @@ public class TemplateManager {
 
                 JsonObject kfMap = new JsonObject();
                 for (Map.Entry<Integer, Keyframe> entry : track.keyframes().entrySet()) {
-                    JsonElement kfJson = FlashbackGson.COMPRESSED.toJsonTree(entry.getValue(), Keyframe.class);
+                    // Serialize using the concrete keyframe class, not Keyframe.class,
+                    // because Keyframe.TypeAdapter.serialize is missing TrackEntityKeyframe
+                    JsonElement kfJson = FlashbackGson.COMPRESSED.toJsonTree(entry.getValue(), entry.getValue().getClass());
                     kfMap.add(String.valueOf(entry.getKey()), kfJson);
                 }
                 trackObj.add("keyframes", kfMap);
