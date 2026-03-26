@@ -27,6 +27,10 @@ public class KeyframeRegistry {
         return types;
     }
 
+    public static KeyframeType<?> getByID(String id) {
+        return typesById.get(id);
+    }
+
     public static void register(KeyframeType<?> type) {
         if (!typesRegistered.add(type.getClass())) {
             return;

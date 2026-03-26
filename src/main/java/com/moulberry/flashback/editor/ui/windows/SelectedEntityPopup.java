@@ -100,7 +100,7 @@ public class SelectedEntityPopup {
 
         // Template application menu
         java.util.List<KeyframeTemplate> templates = TemplateManager.getTemplates();
-        if (!templates.isEmpty() && ImGui.beginMenu("Apply Template")) {
+        if (!templates.isEmpty() && ImGui.beginMenu("Knavish Templates")) {
             for (KeyframeTemplate template : templates) {
                 String label = template.name;
                 if (template.description != null && !template.description.isEmpty()) {
