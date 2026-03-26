@@ -262,8 +262,10 @@ public class TemplateManager {
             TreeMap<Integer, Keyframe> newKeyframes = new TreeMap<>();
             for (Map.Entry<Integer, Keyframe> entry : track.keyframes().entrySet()) {
                 Keyframe kf = entry.getValue().copy();
-                if (kf instanceof TrackEntityKeyframe trackKf && entityToReplace != null) {
-                    if (entityToReplace.equals(trackKf.target)) {
+                if (kf instanceof TrackEntityKeyframe trackKf) {
+                    // If entityToReplace is null, replace ALL entity UUIDs with sentinel
+                    // If specified, only replace that specific UUID
+                    if (entityToReplace == null || entityToReplace.equals(trackKf.target)) {
                         trackKf.target = TEMPLATE_TARGET_SENTINEL;
                     }
                 }

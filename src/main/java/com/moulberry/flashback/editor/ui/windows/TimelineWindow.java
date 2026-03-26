@@ -6,6 +6,7 @@ import com.moulberry.flashback.Utils;
 import com.moulberry.flashback.editor.CopiedKeyframes;
 import com.moulberry.flashback.editor.SavedTrack;
 import com.moulberry.flashback.editor.SelectedKeyframes;
+import com.moulberry.flashback.editor.template.TemplateManager;
 import com.moulberry.flashback.editor.ui.KeyframeRelativeOffsets;
 import com.moulberry.flashback.editor.ui.ReplayUI;
 import com.moulberry.flashback.keyframe.KeyframeType;
@@ -138,6 +139,8 @@ public class TimelineWindow {
     private static int openCreateKeyframeAtTickTrack = -1;
 
     private static final float[] replayTickSpeeds = new float[]{1.0f, 2.0f, 4.0f, 10.0f, 20.0f, 40.0f, 100.0f, 200.0f, 400.0f};
+    private static ImString saveTemplateName = ImGuiHelper.createResizableImString("");
+    private static ImString saveTemplateDesc = ImGuiHelper.createResizableImString("");
 
     public static int getCursorTick() {
         return cursorTicks;
@@ -905,6 +908,31 @@ public class TimelineWindow {
         ReplayUI.setInfoOverlay(I18n.get("flashback.copied_n_keyframes_to_clipboard", keyframeCount));
     }
 
+    private static CopiedKeyframes buildCopiedFromSelection(int totalTicks) {
+        List<SavedTrack> tracks = new ArrayList<>();
+        int minTick = totalTicks;
+
+        for (SelectedKeyframes selectedKeyframes : selectedKeyframesList) {
+            for (int keyframeTick : selectedKeyframes.keyframeTicks()) {
+                minTick = Math.min(minTick, keyframeTick);
+            }
+        }
+
+        for (SelectedKeyframes selectedKeyframes : selectedKeyframesList) {
+            KeyframeTrack keyframeTrack = editorScene.keyframeTracks.get(selectedKeyframes.trackIndex());
+            TreeMap<Integer, Keyframe> keyframes = new TreeMap<>();
+            for (int tick : selectedKeyframes.keyframeTicks()) {
+                Keyframe keyframe = keyframeTrack.keyframesByTick.get(tick);
+                keyframes.put(tick - minTick, keyframe.copy());
+            }
+            tracks.add(new SavedTrack(selectedKeyframes.type(), Math.max(0, selectedKeyframes.trackIndex()), !keyframeTrack.enabled, keyframes));
+        }
+
+        CopiedKeyframes copied = new CopiedKeyframes();
+        copied.savedTracks = tracks;
+        return copied;
+    }
+
     private static void removeAllSelectedKeyframes() {
         upgradeToSceneWrite();
 
@@ -1336,6 +1364,39 @@ public class TimelineWindow {
                     ImGui.closeCurrentPopup();
                 }
 
+                ImGui.endPopup();
+            }
+        }
+
+        // Save as Knavish Template
+        if (!selectedKeyframesList.isEmpty()) {
+            if (ImGui.button("Save as Knavish Template##SaveTemplate")) {
+                ImGui.openPopup("##SaveTemplatePopup");
+                saveTemplateName.set("");
+                saveTemplateDesc.set("");
+            }
+            if (ImGui.beginPopup("##SaveTemplatePopup")) {
+                ImGui.textUnformatted("Save as Knavish Template");
+                ImGui.separator();
+                ImGui.inputText("Name##TemplateName", saveTemplateName);
+                ImGui.inputText("Description##TemplateDesc", saveTemplateDesc);
+                if (ImGui.button("Save##DoSaveTemplate")) {
+                    String name = ImGuiHelper.getString(saveTemplateName).trim();
+                    if (!name.isEmpty()) {
+                        // Build CopiedKeyframes from selection (same as performCopy)
+                        CopiedKeyframes copied = buildCopiedFromSelection(totalTicks);
+                        String desc = ImGuiHelper.getString(saveTemplateDesc).trim();
+                        // Replace all entity UUIDs with sentinel for templatization
+                        var template = TemplateManager.createFromCopied(name, desc, copied, null);
+                        TemplateManager.saveTemplate(template);
+                        ReplayUI.setInfoOverlay("Saved Knavish Template: " + name);
+                        ImGui.closeCurrentPopup();
+                    }
+                }
+                ImGui.sameLine();
+                if (ImGui.button("Cancel##CancelSaveTemplate")) {
+                    ImGui.closeCurrentPopup();
+                }
                 ImGui.endPopup();
             }
         }
