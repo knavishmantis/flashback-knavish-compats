@@ -143,6 +143,10 @@ public class TimelineWindow {
         return cursorTicks;
     }
 
+    public static EditorScene getEditorScene() {
+        return editorScene;
+    }
+
     public static void render() {
         ReplayServer replayServer = Flashback.getReplayServer();
         if (replayServer == null) {

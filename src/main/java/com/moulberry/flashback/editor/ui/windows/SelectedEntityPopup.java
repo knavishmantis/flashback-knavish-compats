@@ -11,6 +11,7 @@ import com.moulberry.flashback.editor.template.KeyframeTemplate;
 import com.moulberry.flashback.editor.template.TemplateManager;
 import com.moulberry.flashback.editor.ui.ImGuiHelper;
 import com.moulberry.flashback.editor.ui.ReplayUI;
+import com.moulberry.flashback.editor.ui.windows.TimelineWindow;
 import com.moulberry.flashback.exporting.AsyncFileDialogs;
 import com.moulberry.flashback.playback.ReplayServer;
 import com.moulberry.flashback.state.EditorScene;
@@ -108,15 +109,10 @@ public class SelectedEntityPopup {
                 }
                 if (ImGui.menuItem(template.name)) {
                     ReplayServer replayServer = Flashback.getReplayServer();
-                    if (replayServer != null) {
+                    EditorScene scene = TimelineWindow.getEditorScene();
+                    if (replayServer != null && scene != null) {
                         int totalTicks = replayServer.getTotalReplayTicks();
-                        long stamp = editorState.acquireWrite();
-                        try {
-                            EditorScene scene = editorState.getCurrentScene(stamp);
-                            TemplateManager.applyTemplate(template, entity.getUUID(), editorState, scene, totalTicks);
-                        } finally {
-                            editorState.release(stamp);
-                        }
+                        TemplateManager.applyTemplate(template, entity.getUUID(), editorState, scene, totalTicks);
                     }
                     ImGui.closeCurrentPopup();
                 }
