@@ -7,9 +7,13 @@ import com.moulberry.flashback.FilePlayerSkin;
 import com.moulberry.flashback.Flashback;
 import com.moulberry.flashback.Utils;
 import com.moulberry.flashback.combo_options.GlowingOverride;
+import com.moulberry.flashback.editor.template.KeyframeTemplate;
+import com.moulberry.flashback.editor.template.TemplateManager;
 import com.moulberry.flashback.editor.ui.ImGuiHelper;
 import com.moulberry.flashback.editor.ui.ReplayUI;
 import com.moulberry.flashback.exporting.AsyncFileDialogs;
+import com.moulberry.flashback.playback.ReplayServer;
+import com.moulberry.flashback.state.EditorScene;
 import com.moulberry.flashback.state.EditorState;
 import imgui.moulberry90.ImGui;
 import imgui.moulberry90.type.ImString;
@@ -92,6 +96,35 @@ public class SelectedEntityPopup {
             editorState.audioSourceEntity = entity.getUUID();
             editorState.markDirty();
             Minecraft.getInstance().levelRenderer.debugRenderer.refreshRendererList();
+        }
+
+        // Template application menu
+        java.util.List<KeyframeTemplate> templates = TemplateManager.getTemplates();
+        if (!templates.isEmpty() && ImGui.beginMenu("Apply Template")) {
+            for (KeyframeTemplate template : templates) {
+                String label = template.name;
+                if (template.description != null && !template.description.isEmpty()) {
+                    label += "##" + template.description;
+                }
+                if (ImGui.menuItem(template.name)) {
+                    ReplayServer replayServer = Flashback.getReplayServer();
+                    if (replayServer != null) {
+                        int totalTicks = replayServer.getTotalReplayTicks();
+                        long stamp = editorState.acquireWrite();
+                        try {
+                            EditorScene scene = editorState.getCurrentScene(stamp);
+                            TemplateManager.applyTemplate(template, entity.getUUID(), editorState, scene, totalTicks);
+                        } finally {
+                            editorState.release(stamp);
+                        }
+                    }
+                    ImGui.closeCurrentPopup();
+                }
+                if (template.description != null && !template.description.isEmpty() && ImGui.isItemHovered()) {
+                    ImGui.setTooltip(template.description);
+                }
+            }
+            ImGui.endMenu();
         }
 
         if (FabricLoader.getInstance().isModLoaded("voicechat")) {
