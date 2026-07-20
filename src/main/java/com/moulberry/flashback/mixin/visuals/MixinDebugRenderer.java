@@ -28,13 +28,13 @@ public class MixinDebugRenderer {
 
     @Inject(method = "refreshRendererList", at = @At("RETURN"))
     public void refreshRendererList(CallbackInfo ci) {
+        this.renderers.add(new FlashbackHitboxesDebugRenderer(Minecraft.getInstance()));
+
         if (Flashback.isInReplay()) {
             EditorState editorState = EditorStateManager.getCurrent();
             if (editorState == null) {
                 return;
             }
-
-            this.renderers.add(new FlashbackHitboxesDebugRenderer(Minecraft.getInstance()));
 
             if (Flashback.isExporting() || !ReplayUI.isActive()) {
                 return;
