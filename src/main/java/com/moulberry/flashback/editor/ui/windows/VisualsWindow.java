@@ -120,6 +120,11 @@ public class VisualsWindow {
                 editorState.markDirty();
             }
 
+            if (ImGui.checkbox(I18n.get("flashback.visuals.world.render_hitboxes"), visuals.renderHitboxes)) {
+                visuals.renderHitboxes = !visuals.renderHitboxes;
+                editorState.markDirty();
+            }
+
             ImGuiHelper.separatorWithText(I18n.get("flashback.visuals.overrides"));
 
             // Fog distance

@@ -22,6 +22,7 @@ public class ReplayVisuals {
     public float[] skyColour = new float[]{0f, 1f, 0f};
     public boolean renderNametags = true;
     public boolean renderBeaconBeams = true;
+    public boolean renderHitboxes = false;
 
     public boolean overrideFog = false;
     public float overrideFogStart = 0.0f;
