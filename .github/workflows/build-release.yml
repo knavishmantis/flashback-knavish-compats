@@ -26,6 +26,8 @@ jobs:
           mkdir -p libs
           curl -L -o libs/identity2.jar \
             "https://cdn.modrinth.com/data/u8V1OwVf/versions/TEBIrp8U/identity2-fabric-1.3.1.jar"
+          curl -L -o libs/starlight.jar \
+            "https://cdn.modrinth.com/data/H8CaAYZC/versions/PLbxwptm/starlight-1.1.3%2Bfabric.5867eae.jar"
 
       - name: Build
         run: ./gradlew build
