@@ -37,7 +37,7 @@ public class FlashbackHitboxesDebugRenderer implements DebugRenderer.SimpleDebug
             Vec3 position = entity.position();
             Vec3 interpPosition = entity.getPosition(partialTick);
             Vec3 interpDelta = interpPosition.subtract(position);
-            Gizmos.cuboid(entity.getBoundingBox().move(interpDelta), GizmoStyle.stroke(COLOUR));
+            Gizmos.cuboid(entity.getBoundingBox().move(interpDelta), GizmoStyle.stroke(COLOUR, 6.0f));
         }
     }
 }
