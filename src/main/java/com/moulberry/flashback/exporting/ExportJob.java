@@ -493,13 +493,15 @@ public class ExportJob {
         if (minecraft.level != null) {
             minecraft.level.update();
         }
-        minecraft.gameRenderer.update(timer, true);
-        minecraft.gameRenderer.extract(timer, true);
-        RenderSystem.executePendingTasks();
+        try (net.minecraft.gizmos.Gizmos.TemporaryCollection flashback$gizmos = minecraft.levelRenderer.collectPerFrameGizmos()) {
+            minecraft.gameRenderer.update(timer, true);
+            minecraft.gameRenderer.extract(timer, true);
+            RenderSystem.executePendingTasks();
 
-        var commandEncoder = RenderSystem.getDevice().createCommandEncoder();
-        commandEncoder.clearColorAndDepthTextures(renderTarget.getColorTexture(), 0, renderTarget.getDepthTexture(), 1.0);
-        minecraft.gameRenderer.render(timer, true);
+            var commandEncoder = RenderSystem.getDevice().createCommandEncoder();
+            commandEncoder.clearColorAndDepthTextures(renderTarget.getColorTexture(), 0, renderTarget.getDepthTexture(), 1.0);
+            minecraft.gameRenderer.render(timer, true);
+        }
 
     }
 
