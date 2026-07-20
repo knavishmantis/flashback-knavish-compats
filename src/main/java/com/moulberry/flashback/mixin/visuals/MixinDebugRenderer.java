@@ -5,6 +5,7 @@ import com.moulberry.flashback.editor.ui.ReplayUI;
 import com.moulberry.flashback.state.EditorState;
 import com.moulberry.flashback.state.EditorStateManager;
 import com.moulberry.flashback.visuals.FlashbackEntityHighlightDebugRenderer;
+import com.moulberry.flashback.visuals.FlashbackHitboxesDebugRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.debug.DebugRenderer;
 import org.spongepowered.asm.mixin.Final;
@@ -32,6 +33,8 @@ public class MixinDebugRenderer {
             if (editorState == null) {
                 return;
             }
+
+            this.renderers.add(new FlashbackHitboxesDebugRenderer(Minecraft.getInstance()));
 
             if (Flashback.isExporting() || !ReplayUI.isActive()) {
                 return;
